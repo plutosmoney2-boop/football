@@ -1,434 +1,650 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Трансляция матча Реал Мадрид — Манчестер Сити</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: Arial, sans-serif;
-            background: #050814;
-            color: #fff;
-        }
+  <meta charset="utf-8">
+  <title>Футбольные матчи — SStats API</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1120;
+      --bg-card: #020617;
+      --accent: #22c55e;
+      --accent-soft: rgba(34, 197, 94, 0.15);
+      --text: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border: #1f2937;
+      --danger: #ef4444;
+    }
 
-        a { text-decoration: none; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
 
-        .top-bar {
-            width: 100%;
-            background: linear-gradient(90deg, #111, #1b1b1b);
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 2px solid #f9b52b;
-        }
-        .top-bar-left {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        .top-bar-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: #f9b52b;
-        }
-        .top-bar-link {
-            font-size: 14px;
-            color: #ddd;
-        }
-        .melbet-btn {
-            background: #f9b52b;
-            color: #111;
-            padding: 10px 18px;
-            border-radius: 4px;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 13px;
-        }
+    body {
+      background: radial-gradient(circle at top, #172554 0, #020617 55%, #000 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+    }
 
-        .page-wrapper {
-            padding: 20px;
-        }
+    .page {
+      width: 100%;
+      max-width: 1000px;
+    }
 
-        .intro-text {
-            max-width: 900px;
-            margin: 0 auto 20px auto;
-            font-size: 16px;
-            line-height: 1.5;
-            color: #e0e0e0;
-        }
+    header {
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-        .support-top-btn-wrapper {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .support-top-btn {
-            display: inline-block;
-            background: linear-gradient(90deg, #ff7a00, #ffcc00);
-            color: #111;
-            padding: 14px 40px;
-            border-radius: 999px;
-            font-size: 18px;
-            font-weight: 800;
-            text-transform: uppercase;
-            box-shadow: 0 0 18px rgba(255, 180, 0, 0.6);
-        }
+    .title-block h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-        .main-block {
-            display: flex;
-            justify-content: center;
-            align-items: stretch;
-            gap: 20px;
-        }
+    .title-pill {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--accent-soft);
+      background: linear-gradient(120deg, rgba(34,197,94,0.12), rgba(34,197,94,0.02));
+      color: var(--accent);
+    }
 
-        .video-container {
-            position: relative;
-            flex: 1 1 auto;
-            max-width: 1200px;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.8);
-            border: 2px solid #222;
-        }
+    .title-block p {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
 
-        .video-wrapper {
-            position: relative;
-            width: 100%;
-            padding-top: 56.25%; /* 16:9 */
-        }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
 
-        .video-wrapper iframe {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
-            z-index: 1;
-        }
+    .filters label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
 
-        /* Чёрная плашка в правом нижнем углу поверх ифрейма, блокирует клики по fullscreen */
-        .video-hide-fs-btn {
-            position: absolute;
-            right: 0;
-            bottom: 0;
-            width: 50px;
-            height: 32px;
-            background: #000;
-            z-index: 5;
-        }
+    .filters input,
+    .filters select {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(15,23,42,0.85);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      min-width: 120px;
+    }
 
-        /* Плашка "Поддержать автора" — сделана шире */
-        .video-support-qr {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 10;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 8px;
-            padding: 8px 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            width: 260px; /* шире в обычном режиме */
-        }
+    .filters input::placeholder {
+      color: #6b7280;
+    }
 
-        .video-support-qr-title {
-            font-size: 11px;
-            text-transform: uppercase;
-            font-weight: 700;
-            color: #ffde59;
-            text-align: center;
-        }
+    .btn {
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--accent);
+      background: radial-gradient(circle at top left, rgba(34,197,94,0.7), rgba(34,197,94,0.25));
+      color: #022c22;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 0 0 1px rgba(34,197,94,0.4), 0 18px 40px rgba(15,185,85,0.35);
+      transition: transform 0.08s ease-out, box-shadow 0.12s ease-out, background 0.12s ease-out;
+    }
 
-        .video-support-qr-img {
-            width: 80px;
-            height: 80px;
-            background: #fff;
-            border-radius: 6px;
-            padding: 4px;
-        }
+    .btn span.icon {
+      font-size: 11px;
+    }
 
-        .video-support-qr-img img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 1px rgba(34,197,94,0.5), 0 24px 60px rgba(16,185,129,0.45);
+    }
 
-        .video-support-qr-link {
-            font-size: 11px;
-            color: #ffcc00;
-            text-decoration: underline;
-        }
+    .btn:active {
+      transform: translateY(1px) scale(0.99);
+      box-shadow: 0 0 0 1px rgba(34,197,94,0.55), 0 14px 35px rgba(16,185,129,0.35);
+    }
 
-        .video-fs-btn {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 10;
-            background: rgba(0, 0, 0, 0.7);
-            color: #fff;
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 11px;
-            cursor: pointer;
-            border: 1px solid #666;
-        }
+    main {
+      background: radial-gradient(circle at top left, rgba(34,197,94,0.12), rgba(15,23,42,0.98));
+      border-radius: 20px;
+      border: 1px solid rgba(55,65,81,0.9);
+      box-shadow:
+        0 0 0 1px rgba(15,23,42, 0.9),
+        0 22px 60px rgba(15,23,42, 0.9),
+        0 0 80px rgba(34,197,94,0.18);
+      padding: 18px;
+      backdrop-filter: blur(18px);
+    }
 
-        .video-fs-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
 
-        .side-panel {
-            width: 220px;
-            min-width: 200px;
-            background: radial-gradient(circle at top, #262626, #111);
-            border-radius: 10px;
-            padding: 16px;
-            border: 2px solid #ffb300;
-            box-shadow: 0 0 18px rgba(255, 179, 0, 0.4);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 12px;
-            flex-shrink: 0;
-        }
-        .side-title {
-            text-transform: uppercase;
-            font-size: 16px;
-            font-weight: 800;
-            text-align: center;
-            color: #ffde59;
-        }
-        .side-subtitle {
-            font-size: 12px;
-            text-align: center;
-            color: #ccc;
-        }
-        .qr-box {
-            width: 6cm;
-            height: 6cm;
-            max-width: 210px;
-            max-height: 210px;
-            background: #fff;
-            padding: 6px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .qr-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        .side-btn {
-            display: inline-block;
-            margin-top: 4px;
-            background: linear-gradient(90deg, #ff7a00, #ffcc00);
-            color: #111;
-            padding: 8px 16px;
-            border-radius: 999px;
-            font-weight: 700;
-            font-size: 13px;
-            text-transform: uppercase;
-        }
+    .summary-text {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
 
-        @media (max-width: 900px) {
-            .main-block {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .side-panel {
-                width: 100%;
-                max-width: 360px;
-                margin: 0 auto;
-            }
-        }
+    .summary-pill {
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.6);
+      font-size: 11px;
+      color: #cbd5f5;
+      background: radial-gradient(circle at top, rgba(148,163,184,0.25), transparent);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
 
-        @media (max-width: 480px) {
-            .top-bar {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-            .page-wrapper {
-                padding: 12px;
-            }
-            .support-top-btn {
-                width: 100%;
-                max-width: 320px;
-                font-size: 16px;
-            }
-        }
+    .summary-pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34,197,94,0.2);
+    }
 
-        /* Полноэкранный режим контейнера */
+    .matches-container {
+      display: grid;
+      grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.1fr);
+      gap: 16px;
+    }
 
-        .video-container:fullscreen {
-            width: 100%;
-            height: 100%;
-            max-width: none;
-            border-radius: 0;
-            border: none;
-        }
+    @media (max-width: 800px) {
+      .matches-container {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
 
-        .video-container:fullscreen .video-wrapper {
-            width: 100%;
-            height: 100%;
-            padding-top: 0;
-        }
+    .matches-list {
+      background: rgba(15,23,42,0.92);
+      border-radius: 16px;
+      border: 1px solid rgba(31,41,55,0.9);
+      padding: 10px;
+      max-height: 520px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #4b5563 #020617;
+    }
 
-        .video-container:fullscreen .video-wrapper iframe {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-        }
+    .matches-list::-webkit-scrollbar {
+      width: 6px;
+    }
 
-        .video-container:fullscreen .video-support-qr {
-            top: 20px;
-            right: 20px;
-            padding: 12px 14px;
-            width: 320px; /* шире в полноэкранном режиме */
-        }
+    .matches-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
 
-        .video-container:fullscreen .video-support-qr-img {
-            width: 110px;
-            height: 110px;
-        }
+    .matches-list::-webkit-scrollbar-thumb {
+      background: #4b5563;
+      border-radius: 999px;
+    }
 
-        .video-container:fullscreen .video-support-qr-title {
-            font-size: 13px;
-        }
+    .match-card {
+      padding: 10px 9px;
+      border-radius: 12px;
+      border: 1px solid rgba(31,41,55,0.9);
+      background: linear-gradient(120deg, rgba(15,23,42,0.95), rgba(15,23,42,0.92));
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+      column-gap: 10px;
+      row-gap: 4px;
+      align-items: center;
+      font-size: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: transform 0.08s ease-out, border-color 0.1s ease-out, box-shadow 0.12s ease-out, background 0.12s ease-out;
+    }
 
-        .video-container:fullscreen .video-support-qr-link {
-            font-size: 12px;
-        }
+    .match-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(34,197,94,0.5);
+      box-shadow: 0 14px 40px rgba(15,23,42,0.9), 0 0 28px rgba(34,197,94,0.2);
+      background: linear-gradient(120deg, rgba(15,23,42,0.98), rgba(5,46,22,0.96));
+    }
 
-        .video-container:fullscreen .video-fs-btn {
-            top: 20px;
-            left: 20px;
-            font-size: 12px;
-            padding: 8px 12px;
-        }
+    .match-teams {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
 
-        /* Меньшая плашка в полноэкранном режиме, тоже блокирует клики */
-        .video-container:fullscreen .video-hide-fs-btn {
-            width: 50px;
-            height: 32px;
-            right: 0;
-            bottom: 0;
-        }
-    </style>
+    .match-team-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .team-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .match-vs {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .match-league {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .match-date {
+      font-size: 11px;
+      color: #cbd5f5;
+    }
+
+    .match-extra {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: flex-end;
+    }
+
+    .pill-small {
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.7);
+      font-size: 10px;
+      color: #e5e7eb;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .status-live {
+      color: #f97316;
+      border-color: rgba(248,113,113,0.7);
+    }
+
+    .status-finished {
+      color: #22c55e;
+      border-color: rgba(34,197,94,0.7);
+    }
+
+    .status-upcoming {
+      color: #e5e7eb;
+      border-color: rgba(148,163,184,0.7);
+    }
+
+    .error {
+      color: var(--danger);
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .sidebar {
+      background: radial-gradient(circle at top, rgba(15,23,42,1), rgba(15,23,42,0.98));
+      border-radius: 16px;
+      border: 1px solid rgba(31,41,55,0.95);
+      padding: 12px 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .sidebar-header span {
+      color: var(--text-muted);
+    }
+
+    .badge-api {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(56,189,248,0.8);
+      color: #bae6fd;
+      background: radial-gradient(circle at top, rgba(56,189,248,0.35), transparent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    pre {
+      margin: 0;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(15,23,42,0.96);
+      color: #e5e7eb;
+      font-size: 11px;
+      overflow-x: auto;
+      border: 1px solid rgba(31,41,55,0.9);
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .hint a {
+      color: #38bdf8;
+      text-decoration: none;
+    }
+
+    .hint a:hover {
+      text-decoration: underline;
+    }
+
+    .ghost-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px dashed rgba(148,163,184,0.7);
+      color: #cbd5f5;
+      background: rgba(15,23,42,0.9);
+    }
+
+    .match-empty {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 12px 6px 4px;
+    }
+
+  </style>
 </head>
 <body>
-<div class="top-bar">
-    <div class="top-bar-left">
-        <div class="top-bar-title">Melbet</div>
-        <a href="https://clck.ru/3Mo7a2" class="top-bar-link" target="_blank" rel="noopener noreferrer">
-            Лучшая линия на матч
-        </a>
-    </div>
-    <a href="https://clck.ru/3Mo7a2" class="melbet-btn" target="_blank" rel="noopener noreferrer">
-        Перейти
-    </a>
-</div>
-
-<div class="page-wrapper">
-
-    <div class="intro-text">
-        Сегодня вас ждёт трансляция одного из самых ожидаемых футбольных противостояний — матча «Реал Мадрид» против «Манчестер Сити» в рамках европейского клубного турнира. 
-        Следите за игрой в прямом эфире, делайте ставки и поддерживайте любимую команду, не отвлекаясь от просмотра.
+<div class="page">
+  <header>
+    <div class="title-block">
+      <div class="title-pill">Realtime football feed</div>
+      <h1>Футбольные матчи <span style="opacity:0.6;">·</span> SStats API</h1>
+      <p>Пример фронтенда, который берёт список матчей из бесплатного API SStats.net и показывает их в удобном виде.</p>
     </div>
 
-    <div class="support-top-btn-wrapper">
-        <a href="https://www.donationalerts.com/r/gorra" class="support-top-btn" target="_blank" rel="noopener noreferrer">
-            Поддержать автора
-        </a>
+    <div class="filters">
+      <label for="leagueId">Лига:</label>
+      <input id="leagueId" type="number" placeholder="LeagueId (например 41)">
+      <label for="year">Год:</label>
+      <input id="year" type="number" placeholder="2023">
+      <button id="loadSeasonBtn" class="btn">
+        <span class="icon">↻</span>
+        <span>Сезон</span>
+      </button>
+      <button id="loadTodayBtn" class="btn" style="border-color:#22c55e;">
+        <span class="icon">●</span>
+        <span>Сегодня</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="summary">
+      <div class="summary-text" id="summaryText">
+        Загрузите матчи за сегодня или за сезон.
+      </div>
+      <div>
+        <span class="summary-pill">
+          <span class="summary-pill-dot"></span>
+          Данные: api.sstats.net
+        </span>
+      </div>
     </div>
 
-    <div class="main-block">
-        <div class="video-container">
-            <button class="video-fs-btn" type="button">
-                На весь экран
-            </button>
+    <div id="errorBox" class="error" style="display:none;"></div>
 
-            <div class="video-wrapper">
-                <iframe src="https://playball10.com/p2p-reserv/10tka9.php"
-                        allowfullscreen
-                        referrerpolicy="no-referrer">
-                </iframe>
+    <div class="matches-container">
+      <section class="matches-list" id="matchesList">
+        <div class="match-empty">Матчи пока не загружены.</div>
+      </section>
 
-                <!-- Чёрная плашка, закрывающая иконку fullscreen и блокирующая клик -->
-                <div class="video-hide-fs-btn"></div>
-
-                <!-- Растянутая по ширине плашка "Поддержать автора" -->
-                <div class="video-support-qr">
-                    <div class="video-support-qr-title">Поддержать автора</div>
-                    <div class="video-support-qr-img">
-                        <img src="https://image2url.com/images/1765383032320-a1182741-b7e6-4da9-91c4-2e78ad065e8c.png" alt="QR код">
-                    </div>
-                    <a href="https://www.donationalerts.com/r/gorra" class="video-support-qr-link" target="_blank" rel="noopener noreferrer">
-                        Открыть ссылку
-                    </a>
-                </div>
-            </div>
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span>Запрос к API</span>
+          <span class="badge-api">OpenAPI 3.0</span>
         </div>
 
-        <div class="side-panel">
-            <div class="side-title">Поддержать автора</div>
-            <div class="side-subtitle">Отсканируй QR, чтобы поддержать</div>
-            <div class="qr-box">
-                <img src="https://image2url.com/images/1765383032320-a1182741-b7e6-4da9-91c4-2e78ad065e8c.png" alt="QR код">
-            </div>
-            <a href="https://www.donationalerts.com/r/gorra" class="side-btn" target="_blank" rel="noopener noreferrer">
-                Поддержать автора
-            </a>
+        <pre><code id="requestPreview">GET https://api.sstats.net/games/list?today=true
+Accept: application/json
+X-Api-Key: YOUR_API_KEY_HERE</code></pre>
+
+        <div class="hint">
+          Эндпоинты SStats.net отдают данные в формате JSON или CSV. [web:1]<br>
+          Примеры в документации:
+          <div style="margin-top:4px;">
+            <span class="ghost-pill">/games/list?today=true</span>
+            <span class="ghost-pill">/games/list?LeagueId=41&amp;Year=2023</span>
+          </div>
+          Подробности и авторизация описаны в разделе API на сайте SStats.net. [web:1]
         </div>
+      </aside>
     </div>
+  </main>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const container = document.querySelector('.video-container');
-    const fsBtn = document.querySelector('.video-fs-btn');
+  const matchesListEl = document.getElementById('matchesList');
+  const summaryTextEl = document.getElementById('summaryText');
+  const requestPreviewEl = document.getElementById('requestPreview');
+  const errorBoxEl = document.getElementById('errorBox');
 
-    function toggleFullscreen() {
-        if (!document.fullscreenElement) {
-            if (container.requestFullscreen) {
-                container.requestFullscreen();
-            } else if (container.webkitRequestFullscreen) { // Safari
-                container.webkitRequestFullscreen();
-            } else if (container.mozRequestFullScreen) { // Old Firefox
-                container.mozRequestFullScreen();
-            } else if (container.msRequestFullscreen) { // Old IE/Edge
-                container.msRequestFullscreen();
-            }
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
-        }
+  const leagueInput = document.getElementById('leagueId');
+  const yearInput = document.getElementById('year');
+  const btnSeason = document.getElementById('loadSeasonBtn');
+  const btnToday = document.getElementById('loadTodayBtn');
+
+  const API_BASE = 'https://api.sstats.net';
+  const API_KEY = 'YOUR_API_KEY_HERE'; // если авторизация не требуется, можно оставить пустую строку
+
+  function setError(message) {
+    if (!message) {
+      errorBoxEl.style.display = 'none';
+      errorBoxEl.textContent = '';
+      return;
+    }
+    errorBoxEl.style.display = 'block';
+    errorBoxEl.textContent = message;
+  }
+
+  function buildUrlToday() {
+    return API_BASE + '/games/list?today=true';
+  }
+
+  function buildUrlSeason(leagueId, year) {
+    const params = new URLSearchParams();
+    if (leagueId) params.append('LeagueId', leagueId);
+    if (year) params.append('Year', year);
+    return API_BASE + '/games/list?' + params.toString();
+  }
+
+  function updateRequestPreview(url) {
+    const headers = [];
+    headers.push('GET ' + url);
+    headers.push('Accept: application/json');
+    if (API_KEY) {
+      headers.push('X-Api-Key: ' + API_KEY);
+    }
+    requestPreviewEl.textContent = headers.join('\n');
+  }
+
+  function renderMatches(matches) {
+    matchesListEl.innerHTML = '';
+
+    if (!matches || matches.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'match-empty';
+      empty.textContent = 'Матчей не найдено.';
+      matchesListEl.appendChild(empty);
+      return;
     }
 
-    fsBtn.addEventListener('click', toggleFullscreen);
+    matches.forEach(match => {
+      const card = document.createElement('article');
+      card.className = 'match-card';
 
-    document.addEventListener('fullscreenchange', () => {
-        if (document.fullscreenElement === container) {
-            fsBtn.textContent = 'Выйти из полноэкрана';
+      const homeName = match.HomeTeamName || match.home_team || 'Домашняя команда';
+      const awayName = match.AwayTeamName || match.away_team || 'Гости';
+
+      const leagueName = match.LeagueName || match.league_name || 'Лига';
+      const countryName = match.CountryName || match.country || '';
+
+      const dateRaw = match.Date || match.date || match.StartTime || match.start_time;
+      let dateStr = 'Время не указано';
+      if (dateRaw) {
+        const d = new Date(dateRaw);
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toLocaleString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
         } else {
-            fsBtn.textContent = 'На весь экран';
+          dateStr = String(dateRaw);
         }
+      }
+
+      const statusRaw = (match.Status || match.status || '').toString().toLowerCase();
+      let statusText = 'Запланирован';
+      let statusClass = 'status-upcoming';
+
+      if (statusRaw.includes('live') || statusRaw.includes('inplay') || statusRaw.includes('1st') || statusRaw.includes('2nd')) {
+        statusText = 'В игре';
+        statusClass = 'status-live';
+      } else if (statusRaw.includes('finished') || statusRaw.includes('ended') || statusRaw === 'ft') {
+        statusText = 'Завершён';
+        statusClass = 'status-finished';
+      }
+
+      const teamsBlock = document.createElement('div');
+      teamsBlock.className = 'match-teams';
+      teamsBlock.innerHTML = `
+        <div class="match-team-row">
+          <span class="team-name">${homeName}</span>
+        </div>
+        <div class="match-vs">vs</div>
+        <div class="match-team-row">
+          <span class="team-name">${awayName}</span>
+        </div>
+      `;
+
+      const infoBlock = document.createElement('div');
+      infoBlock.innerHTML = `
+        <div class="match-league">${leagueName}${countryName ? ' · ' + countryName : ''}</div>
+        <div class="match-date">${dateStr}</div>
+      `;
+
+      const extraBlock = document.createElement('div');
+      extraBlock.className = 'match-extra';
+      extraBlock.innerHTML = `
+        <div class="pill-small ${statusClass}">${statusText}</div>
+        ${match.Round ? `<div class="pill-small">Тур ${match.Round}</div>` : ''}
+      `;
+
+      card.appendChild(teamsBlock);
+      card.appendChild(infoBlock);
+      card.appendChild(extraBlock);
+
+      // если нужно кликать и переходить на детали матча:
+      if (match.Id || match.GameId) {
+        const gameId = match.Id || match.GameId;
+        card.title = 'Открыть детали матча (games/' + gameId + ')';
+        card.addEventListener('click', () => {
+          window.open(API_BASE + '/games/' + gameId, '_blank');
+        });
+      }
+
+      matchesListEl.appendChild(card);
     });
-});
+  }
+
+  async function loadMatches(url, modeLabel) {
+    setError('');
+    updateRequestPreview(url);
+    summaryTextEl.textContent = 'Загружаем матчи (' + modeLabel + ')…';
+
+    try {
+      const headers = { 'Accept': 'application/json' };
+      if (API_KEY) {
+        headers['X-Api-Key'] = API_KEY;
+      }
+
+      const response = await fetch(url, { headers });
+
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status + ' — ' + response.statusText);
+      }
+
+      const data = await response.json();
+
+      let matches = Array.isArray(data) ? data : (data.data || data.games || data.items || []);
+      if (!Array.isArray(matches)) {
+        matches = [];
+      }
+
+      renderMatches(matches);
+      summaryTextEl.textContent = 'Найдено матчей: ' + matches.length + ' (' + modeLabel + ').';
+    } catch (err) {
+      console.error(err);
+      setError('Ошибка загрузки матчей: ' + err.message + '. Проверьте ключ, домен CORS и параметры запроса.');
+      summaryTextEl.textContent = 'Не удалось загрузить матчи.';
+    }
+  }
+
+  btnToday.addEventListener('click', () => {
+    const url = buildUrlToday();
+    loadMatches(url, 'сегодня');
+  });
+
+  btnSeason.addEventListener('click', () => {
+    const leagueId = leagueInput.value.trim();
+    const year = yearInput.value.trim();
+    const url = buildUrlSeason(leagueId, year);
+    loadMatches(url, 'сезон');
+  });
+
+  // Можно автоматически загрузить матчи за сегодня при открытии страницы:
+  // loadMatches(buildUrlToday(), 'сегодня');
 </script>
 </body>
 </html>
