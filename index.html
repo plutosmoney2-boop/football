@@ -1,58 +1,222 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <title>AI Прогнозы по футболу</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 16px; }
-    .hidden { display: none; }
-    .error { color: red; }
-    .success { color: green; }
-    label { display: block; margin-top: 12px; }
-    select, input, button { padding: 6px 8px; margin-top: 4px; width: 100%; box-sizing: border-box; }
-    .section { border: 1px solid #ddd; padding: 12px; margin-top: 16px; border-radius: 8px; }
-  </style>
-</head>
-<body>
-  <h1>Введите ваш ID от Melbet</h1>
-  <p>Нужен подтверждённый ID аккаунта Melbet (9 цифр). После ввода ID выберите дату и матч.</p>
+// ===== НАСТРОЙКИ API-SPORT.RU =====
 
-  <div class="section" id="registration-section">
-    <label for="melbet-id">Ваш ID (9 цифр)</label>
-    <input id="melbet-id" type="text" maxlength="9" placeholder="Например, 123456789" />
-    <button id="register-btn">Подтвердить ID</button>
-    <div id="registration-message"></div>
-  </div>
+// ТВОЙ КЛЮЧ
+const API_KEY = '2fa2ac7e-9e0b-4291-be98-e701086ea58a';
 
-  <div class="section hidden" id="search-section">
-    <h2>Выберите дату и матч</h2>
+// Базовый URL согласно доке api-sport.ru (раздел /api/docs) [web:39]
+const BASE_URL = 'https://api.api-sport.ru/v2';
 
-    <label for="date-input">Дата матча</label>
-    <input id="date-input" type="date" />
+// ID топ‑лиг в терминах API-sport (подставь реальные ID турниров из своего кабинета) [web:41]
+const TOP_LEAGUES = [
+  // пример: 39, 140, 135, 78, 61  (АПЛ, Ла Лига, Серия A, Бундеслига, Лига 1)
+];
 
-    <button id="load-matches-btn" style="margin-top:8px;">Загрузить матчи</button>
-    <div id="matches-message"></div>
+// ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
 
-    <div id="selectors" class="hidden">
-      <label for="country-select">Страна</label>
-      <select id="country-select"></select>
+function showMessage(el, text, type = '') {
+  el.textContent = text;
+  el.className = type ? type : '';
+}
 
-      <label for="league-select">Лига / турнир</label>
-      <select id="league-select"></select>
+function groupByCountryLeague(fixtures) {
+  // Ожидаем структуру api-sport типа:
+  // fixture.country.name, fixture.league.name, fixture.league.id, teams.home.name, teams.away.name, fixture.date [web:40]
+  const map = new Map();
 
-      <label for="match-select">Матч</label>
-      <select id="match-select"></select>
+  for (const f of fixtures) {
+    const country = f.country?.name || f.league?.country || 'Другие';
+    const leagueId = f.league?.id;
+    const leagueName = f.league?.name || 'Лига';
 
-      <button id="get-prediction-btn" style="margin-top:8px;">Получить прогноз</button>
-    </div>
-  </div>
+    const key = `${country}:::${leagueId}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        country,
+        leagueId,
+        leagueName,
+        matches: []
+      });
+    }
 
-  <div class="section hidden" id="prediction-section">
-    <h2>Прогноз от AI</h2>
-    <p id="prediction-text"></p>
-  </div>
+    map.get(key).matches.push({
+      id: f.id || f.fixture?.id || f.game_id,
+      utcDate: f.date || f.fixture?.date,
+      homeTeam: f.teams?.home?.name || f.home?.name || f.home_team,
+      awayTeam: f.teams?.away?.name || f.away?.name || f.away_team
+    });
+  }
 
-  <script src="app.js"></script>
-</body>
-</html>
+  const result = {};
+  for (const [, v] of map) {
+    if (!result[v.country]) result[v.country] = [];
+    result[v.country].push(v);
+  }
+  return result;
+}
+
+// ===== РЕГИСТРАЦИЯ MELBET ID =====
+
+const melbetIdInput = document.getElementById('melbet-id');
+const registerBtn = document.getElementById('register-btn');
+const registrationMsg = document.getElementById('registration-message');
+const searchSection = document.getElementById('search-section');
+
+registerBtn.addEventListener('click', () => {
+  const id = (melbetIdInput.value || '').trim();
+  const isValid = /^[0-9]{9}$/.test(id);
+  if (!isValid) {
+    showMessage(registrationMsg, 'ID должен быть ровно 9 цифр.', 'error');
+    return;
+  }
+
+  // Можно просто сохранять локально, без реальной проверки на Melbet
+  localStorage.setItem('melbet_id', id);
+  showMessage(registrationMsg, 'ID подтверждён. Можно выбирать матчи.', 'success');
+  searchSection.classList.remove('hidden');
+});
+
+// ===== ЗАГРУЗКА МАТЧЕЙ ПО ДАТЕ =====
+
+const dateInput = document.getElementById('date-input');
+const loadMatchesBtn = document.getElementById('load-matches-btn');
+const matchesMsg = document.getElementById('matches-message');
+const selectorsBlock = document.getElementById('selectors');
+
+const countrySelect = document.getElementById('country-select');
+const leagueSelect = document.getElementById('league-select');
+const matchSelect = document.getElementById('match-select');
+
+let groupedData = {};
+let flatFixtures = [];
+
+loadMatchesBtn.addEventListener('click', async () => {
+  const date = dateInput.value;
+  if (!date) {
+    showMessage(matchesMsg, 'Сначала выбери дату.', 'error');
+    return;
+  }
+
+  showMessage(matchesMsg, 'Загружаем матчи...', '');
+  selectorsBlock.classList.add('hidden');
+
+  try {
+    // Смотри раздел football / fixtures в доке api-sport.ru: обычно формат:
+    // GET /football/fixtures?date=YYYY-MM-DD [web:39][web:40]
+    const url = new URL(BASE_URL + '/football/fixtures');
+    url.searchParams.set('date', date);
+
+    const resp = await fetch(url.toString(), {
+      headers: {
+        'X-API-KEY': API_KEY    // или Authorization: Bearer ..., см. доку
+      }
+    });
+
+    if (!resp.ok) throw new Error('API error: ' + resp.status);
+    const data = await resp.json();
+
+    // По доке api-sport.ru ответы обычно в поле data / response [web:39]
+    let fixtures = data.data || data.response || data.fixtures || [];
+
+    // Фильтр по топ‑лигам, если список задан
+    if (TOP_LEAGUES.length > 0) {
+      fixtures = fixtures.filter(f =>
+        TOP_LEAGUES.includes(f.league?.id) || TOP_LEAGUES.includes(f.tournament_id)
+      );
+    }
+
+    if (!fixtures.length) {
+      showMessage(matchesMsg, 'На эту дату нет матчей топ‑лиг.', 'error');
+      return;
+    }
+
+    flatFixtures = fixtures;
+    groupedData = groupByCountryLeague(fixtures);
+    fillCountrySelect();
+
+    selectorsBlock.classList.remove('hidden');
+    showMessage(matchesMsg, `Найдено матчей: ${fixtures.length}`, 'success');
+  } catch (e) {
+    console.error(e);
+    showMessage(matchesMsg, 'Ошибка при загрузке матчей. Проверь ключ и URL API.', 'error');
+  }
+});
+
+// ===== ЗАПОЛНЕНИЕ СЕЛЕКТОРОВ =====
+
+function fillCountrySelect() {
+  countrySelect.innerHTML = '';
+  const countries = Object.keys(groupedData).sort();
+  for (const c of countries) {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    countrySelect.appendChild(opt);
+  }
+  if (countries.length) {
+    fillLeagueSelect(countries[0]);
+  }
+}
+
+function fillLeagueSelect(country) {
+  leagueSelect.innerHTML = '';
+  const leagues = (groupedData[country] || []).sort((a, b) =>
+    a.leagueName.localeCompare(b.leagueName)
+  );
+  for (const l of leagues) {
+    const opt = document.createElement('option');
+    opt.value = l.leagueId;
+    opt.textContent = l.leagueName;
+    leagueSelect.appendChild(opt);
+  }
+  if (leagues.length) {
+    fillMatchSelect(country, leagues[0].leagueId);
+  }
+}
+
+function fillMatchSelect(country, leagueId) {
+  matchSelect.innerHTML = '';
+  const leagueBlock = (groupedData[country] || []).find(l => String(l.leagueId) === String(leagueId));
+  if (!leagueBlock) return;
+
+  for (const m of leagueBlock.matches) {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    const time = (m.utcDate || '').slice(11, 16); // HH:MM
+    opt.textContent = `${time || ''} ${m.homeTeam} vs ${m.awayTeam}`;
+    matchSelect.appendChild(opt);
+  }
+}
+
+countrySelect.addEventListener('change', () => {
+  const c = countrySelect.value;
+  fillLeagueSelect(c);
+});
+
+leagueSelect.addEventListener('change', () => {
+  const c = countrySelect.value;
+  const l = leagueSelect.value;
+  fillMatchSelect(c, l);
+});
+
+// ===== ПСЕВДО-ПРОГНОЗ (заглушка) =====
+
+const getPredictionBtn = document.getElementById('get-prediction-btn');
+const predictionSection = document.getElementById('prediction-section');
+const predictionText = document.getElementById('prediction-text');
+
+getPredictionBtn.addEventListener('click', () => {
+  const matchId = matchSelect.value;
+  if (!matchId) return;
+
+  const fx = flatFixtures.find(f =>
+    String(f.id || f.fixture?.id || f.game_id) === String(matchId)
+  );
+  if (!fx) return;
+
+  const home = fx.teams?.home?.name || fx.home?.name || fx.home_team;
+  const away = fx.teams?.away?.name || fx.away?.name || fx.away_team;
+
+  predictionText.textContent =
+    `Вы выбрали матч: ${home} vs ${away}. Здесь будет текст прогноза от AI (пока заглушка).`;
+  predictionSection.classList.remove('hidden');
+});
